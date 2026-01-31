@@ -1,0 +1,397 @@
+ComponentDefinitions:
+  cmpAttachment:
+    DefinitionType: CanvasComponent
+    CustomProperties:
+      Attachments:
+        PropertyKind: Output
+        DisplayName: Attachments
+        Description: Attachments
+        DataType: Table
+      BackgroundFill:
+        PropertyKind: Input
+        DisplayName: Background Fill
+        Description: Background Fill
+        DataType: Color
+        Default: =RGBA(246, 248, 250, 1)
+      BorderRadius:
+        PropertyKind: Input
+        DisplayName: Border Radius
+        Description: Border Radius
+        DataType: Number
+        Default: =0
+      ClearAttachments:
+        PropertyKind: Action
+        DisplayName: Clear Attachments
+        Description: A custom property
+        ReturnType: None
+      Color:
+        PropertyKind: Input
+        DisplayName: Color
+        Description: Color
+        DataType: Color
+        Default: =RGBA(0, 0, 0, 1)
+      DisabledBackgroundFill:
+        PropertyKind: Input
+        DisplayName: Disabled Background Fill
+        Description: Disabled Background Fill
+        DataType: Color
+        Default: =RGBA(246, 248, 250, 1)
+      DisabledColor:
+        PropertyKind: Input
+        DisplayName: Disabled Color
+        Description: Disabled Color
+        DataType: Color
+        Default: =RGBA(100, 100, 100, 1)
+      DisplayMode:
+        PropertyKind: Input
+        DisplayName: Display Mode
+        Description: Display Mode
+        DataType: Text
+        Default: =DisplayMode.Edit
+      HoverFill:
+        PropertyKind: Input
+        DisplayName: Hover Fill
+        Description: A custom property
+        DataType: Color
+        Default: =RGBA(48, 119, 166, 0.1)
+      Icon:
+        PropertyKind: Input
+        DisplayName: Icon
+        Description: Upload Icon as SVG
+        DataType: Text
+        Default: |-
+          ="<svg width='800px' height='800px' viewBox='-8 0 32 32' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' xmlns:sketch='http://www.bohemiancoding.com/sketch/ns'>
+
+              <g id='Page-1' stroke='none' stroke-width='1' fill='none' fill-rule='evenodd' sketch:type='MSPage'>
+                  <g id='Icon-Set-Filled' sketch:type='MSLayerGroup' transform='translate(-214.000000, -153.000000)' fill='gblColor'>
+                      <path d='M228,157 L228,177 C228,180.313 225.313,183 222,183 C218.687,183 216,180.313 216,177 L216,159 C216,156.791 217.791,155 220,155 C222.209,155 224,156.791 224,159 L224,177 C224,178.104 223.104,179 222,179 C220.896,179 220,178.104 220,177 L220,161 L218,161 L218,177 C218,179.209 219.791,181 222,181 C224.209,181 226,179.209 226,177 L226,159 C226,155.687 223.313,153 220,153 C216.687,153 214,155.687 214,159 L214,178 C214.493,181.945 217.921,185 222,185 C226.079,185 229.507,181.945 230,178 L230,157 L228,157' id='attachment' sketch:type='MSShapeGroup'>
+
+          </path>
+                  </g>
+              </g>
+          </svg>"
+      IconSize:
+        PropertyKind: Input
+        DisplayName: Icon Size
+        Description: Icon Size
+        DataType: Number
+        Default: =24
+      LabelDirection:
+        PropertyKind: Input
+        DisplayName: Label Direction
+        Description: Label Direction (LayoutDirection.Horizontal or LayoutDirection.Vertical)
+        DataType: Text
+        Default: =LayoutDirection.Horizontal
+      Loading:
+        PropertyKind: Output
+        DisplayName: Loading
+        Description: Component Loading
+        DataType: Boolean
+      OnAddFile:
+        PropertyKind: Event
+        DisplayName: On Add File
+        Description: On Add File
+        ReturnType: None
+        Default: =
+      PressedFill:
+        PropertyKind: Input
+        DisplayName: Pressed Fill
+        Description: Pressed Fill
+        DataType: Color
+        Default: =RGBA(48, 119, 166, 0.2)
+      RemoveFile:
+        PropertyKind: Action
+        DisplayName: Remove File
+        Description: Remove File
+        ReturnType: None
+        Parameters:
+          - IDToDelete:
+              Description: The GUID of the Attached File
+              DataType: Text
+              Default: ="GUID"
+      ResetOnAdd:
+        PropertyKind: Input
+        DisplayName: Reset On Add
+        Description: Reset component whenever an attachment is added
+        DataType: Boolean
+        Default: =true
+      Size:
+        PropertyKind: Input
+        DisplayName: Font Size
+        Description: Font Size
+        DataType: Number
+        Default: =10
+      Text:
+        PropertyKind: Input
+        DisplayName: Text
+        Description: Upload File Text
+        DataType: Text
+        Default: ="Upload File"
+    Properties:
+      Attachments: =colAttachments
+      ClearAttachments: |-
+        =// Clears Component Control
+        Clear(colAttachments);
+        //Set(gblContent, Blank());
+        //Reset(atcAttachment_cmpAttachment);
+      Loading: =gblLoadingData
+      OnReset: |-
+        =Set(gblLoadingData, false);
+        Reset(atcAttachment_cmpAttachment);
+        Clear(colAttachments);
+      RemoveFile: |-
+        =Set(gblLoadingData, true);
+        Remove(colAttachments, LookUp(colAttachments, ID = IDToDelete));
+        Set(gblLoadingData, false);
+    Children:
+      - conAttachment_cmpAttachment:
+          Control: GroupContainer@1.4.0
+          Variant: ManualLayout
+          Properties:
+            BorderStyle: =BorderStyle.Dashed
+            BorderThickness: =1
+            DropShadow: =DropShadow.None
+            Height: =Parent.Height - 2
+            RadiusBottomLeft: =cmpAttachment.BorderRadius
+            RadiusBottomRight: =cmpAttachment.BorderRadius
+            RadiusTopLeft: =cmpAttachment.BorderRadius
+            RadiusTopRight: =cmpAttachment.BorderRadius
+            Width: =Parent.Width - 2
+            X: =1
+            Y: =1
+          Children:
+            - galFileContent_cmpAttachment:
+                Control: Gallery@2.15.0
+                Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                Properties:
+                  BorderColor: =RGBA(245, 245, 245, 1)
+                  Height: =48
+                  Items: =gblContent
+                  TemplateSize: =40
+                  Width: =313
+                Children:
+                  - imgFileContent_cmpAttachment:
+                      Control: Image@2.2.3
+                      Properties:
+                        BorderColor: =RGBA(0, 0, 0, 0)
+                        BorderStyle: =BorderStyle.None
+                        BorderThickness: =2
+                        DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                        DisabledFill: =RGBA(0, 0, 0, 0)
+                        FocusedBorderThickness: =4
+                        Height: =40
+                        HoverBorderColor: =RGBA(0, 0, 0, 0)
+                        HoverFill: =RGBA(0, 0, 0, 0)
+                        Image: =ThisItem.Value
+                        OnSelect: =Select(Parent)
+                        PressedBorderColor: =RGBA(0, 0, 0, 0)
+                        PressedFill: =RGBA(0, 0, 0, 0)
+                        X: =40
+            - conButtonAttachment_cmpAttachment:
+                Control: GroupContainer@1.4.0
+                Variant: AutoLayout
+                Properties:
+                  BorderStyle: =BorderStyle.None
+                  DropShadow: =DropShadow.None
+                  Fill: =If(cmpAttachment.DisplayMode = DisplayMode.Edit, cmpAttachment.BackgroundFill, cmpAttachment.DisabledBackgroundFill)
+                  Height: =Parent.Height
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =cmpAttachment.LabelDirection
+                  LayoutGap: =If(cmpAttachment.LabelDirection = LayoutDirection.Horizontal, 4, 16)
+                  LayoutJustifyContent: =LayoutJustifyContent.Center
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  Width: =Parent.Width
+                Children:
+                  - imgButtonAttachment_cmpAttachment:
+                      Control: Image@2.2.3
+                      Properties:
+                        BorderColor: =RGBA(0, 0, 0, 0)
+                        BorderStyle: =BorderStyle.None
+                        BorderThickness: =2
+                        DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                        DisabledFill: =RGBA(0, 0, 0, 0)
+                        FocusedBorderThickness: =4
+                        Height: =cmpAttachment.IconSize
+                        HoverBorderColor: =RGBA(0, 0, 0, 0)
+                        HoverFill: =RGBA(0, 0, 0, 0)
+                        Image: |-
+                          =With(
+                              {
+                                  iconColor: If(cmpAttachment.DisplayMode = DisplayMode.Edit, cmpAttachment.Color, cmpAttachment.DisabledColor)
+                              },
+                              "data:image/svg+xml;utf8, "&EncodeUrl($"
+                                  {
+                                      Substitute(
+                                          cmpAttachment.Icon,"gblColor", Substitute(JSON(iconColor),"""", "")
+                                      )
+                                  }
+                              ")
+                          )
+                        LayoutMaxHeight: =
+                        LayoutMaxWidth: =
+                        PressedBorderColor: =RGBA(0, 0, 0, 0)
+                        PressedFill: =RGBA(0, 0, 0, 0)
+                        Width: =cmpAttachment.IconSize
+                        X: =106
+                        Y: =397
+                  - lblButtonAttachment_cmpAttachment:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        AutoHeight: =true
+                        Color: =cmpAttachment.Color
+                        DisabledColor: =cmpAttachment.DisabledColor
+                        DisplayMode: =cmpAttachment.DisplayMode
+                        FontWeight: =FontWeight.Semibold
+                        LayoutMaxHeight: =
+                        LayoutMaxWidth: =
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =cmpAttachment.Size
+                        Text: =cmpAttachment.Text
+                        Width: =htmButtonAttachmentCalcWidth_cmpAttachment.Height
+            - atcAttachment_cmpAttachment:
+                Control: Attachments@2.3.0
+                Properties:
+                  AddAttachmentText: =
+                  BorderColor: =RGBA(0, 0, 0, 0)
+                  BorderStyle: =BorderStyle.None
+                  Color: =RGBA(0, 0, 0, 0)
+                  DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                  DisabledColor: =RGBA(161, 159, 157, 1)
+                  DisabledFill: =RGBA(244, 244, 244, 0)
+                  DisplayMode: =cmpAttachment.DisplayMode
+                  DropTargetBackgroundColor: =cmpAttachment.HoverFill
+                  DropTargetBorderStyle: =BorderStyle.None
+                  DropTargetTextColor: =RGBA(0, 0, 0, 0)
+                  Fill: =RGBA(0, 0, 0, 0)
+                  FocusedBorderThickness: =2
+                  Font: =
+                  FontWeight: =
+                  Height: =Parent.Height * 3
+                  HoverColor: =RGBA(0, 0, 0, 0)
+                  HoverFill: =cmpAttachment.HoverFill
+                  ItemColor: =RGBA(0, 0, 0, 0)
+                  ItemErrorColor: =RGBA(0, 0, 0, 0)
+                  ItemErrorFill: =RGBA(0, 0, 0, 0)
+                  ItemFill: =cmpAttachment.HoverFill
+                  ItemHoverColor: =RGBA(50, 49, 48, 0)
+                  ItemHoverFill: =cmpAttachment.HoverFill
+                  Items.Name: =Name
+                  Items.Value: =FileContent
+                  MaxAttachmentSize: =50
+                  MaxAttachments: =5
+                  MaxAttachmentsText: =
+                  NoAttachmentsColor: =RGBA(0, 0, 0, 0)
+                  NoAttachmentsText: =
+                  OnAddFile: |-
+                    =// Resets the component state whenever this runs. Use it when you want each attaching action to reset. 
+                    // Set to false if you'd like to allow adding more attachments in each different attach action
+                    If(
+                        cmpAttachment.ResetOnAdd,
+                        cmpAttachment.ClearAttachments()
+                    );
+
+                    Set(gblContent, Self.Attachments);
+                    Set(gblLoadingData, true);
+
+                    ForAll(
+                        galFileContent_cmpAttachment.AllItems As attachmentFile,
+                        With(
+                            {
+                                tempID: Text(GUID()),
+                                contentFile: Index(Split(Substitute(JSON(attachmentFile.imgFileContent_cmpAttachment.Image, JSONFormat.IncludeBinaryData), """", ""), ","),2).Value,
+                                numDuplicates: CountRows(Filter(colAttachments, Name = attachmentFile.Name)),
+                                //.test: First(Split(attachmentFile.Name, "." & Last(Split(attachmentFile.Name, ".").Value))),
+                                fileName: First(Split(attachmentFile.Name, ".")).Value,
+                                fileExtension: Last(Split(attachmentFile.Name, ".")).Value
+                            },
+                            Collect(
+                                colAttachments,
+                                {
+                                    Name: If(!IsBlank(LookUp(colAttachments, Name = attachmentFile.Name)), $"{fileName} ({numDuplicates}).{fileExtension}", attachmentFile.Name),
+                                    Status: "Unsaved",
+                                    ID: tempID,
+                                    FileContent: ""
+                                }
+                            );
+                            //Notify(LookUp(colAttachments, ID = tempID).ID);
+                            // TODO: IF OVER THE ATTACHMENT SIZE --> DONT ADD
+                            Patch(
+                                colAttachments,
+                                LookUp(colAttachments, ID = tempID),
+                                {
+                                    FileContent: contentFile
+                                }
+                            );
+                        );
+                    );
+                    cmpAttachment.OnAddFile();
+                    // Insert Logic here depending on whether you want to attach immediately or wait until user submits
+                    /*
+                    With(
+                        {
+                            currentFiles: Filter(PAEC_SP_LIB_ITEMSDOCUMENTS, PAECNumber = varFormData.PAECNumber, DocumentType = nfDocumentTypes.Template),
+                            pendingFiles: colAttachments,
+                            maxLimit: nfAttachmentLimit
+                        },
+                        If(
+                            CountRows(currentFiles) + CountRows(pendingFiles) > 18,
+                            Notify($"The {CountRows(pendingFiles)} file(s) you are attempting to upload will exceed the total limit of {maxLimit}. Please try again.", NotificationType.Error, 10000),
+                            !IsEmpty(pendingFiles), 
+                            Set(varUploadFilesResponse, PAEC_UploadFiles.Run(JSON(pendingFiles),nfItemsDocuments,varFormData.PAECNumber))
+                        );
+                    );
+
+                    Clear(colAttachments);
+
+                    If(
+                        varUploadFilesResponse.response = 200,
+                        Refresh(PAEC_SP_LIB_ITEMSDOCUMENTS);
+                        Set(varUploadFilesResponse, Blank())
+                    );
+                    */
+                    Reset(Self);
+                    Set(gblLoadingData, false);
+                  PaddingBottom: =5
+                  PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
+                  PaddingRight: =5
+                  PaddingTop: =5
+                  PressedFill: =cmpAttachment.PressedFill
+                  Size: =Parent.Height * 0.5
+                  Tooltip: ="Attach"
+                  Width: =Parent.Width* 2
+                  X: =(Parent.Width - Self.Width) / 2
+                  Y: =-Parent.Height * 2
+      - htmButtonAttachmentCalcWidth_cmpAttachment:
+          Control: HtmlViewer@2.1.0
+          Properties:
+            AutoHeight: =true
+            Font: =lblButtonAttachment_cmpAttachment.Font
+            Height: =1
+            HtmlText: |+
+              =// This control calculates the width of the breadcrumb item
+              $"<div style='
+                  display: inline-block;
+                  margin: 0px 30px;
+                  position: relative;
+                  transform: rotate(90deg);
+                  transform-origin: top left;
+                  white-space: nowrap;
+                  font-weight: 600;
+
+              '>
+              {lblButtonAttachment_cmpAttachment.Text}
+              </div>"
+            PaddingBottom: =0
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            Size: =lblButtonAttachment_cmpAttachment.Size
+            Width: =1
+            Y: =Parent.Height + 100
