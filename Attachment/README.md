@@ -10,20 +10,53 @@ A highly customisable, modern replacement for the standard Power Apps attachment
 * **Smart File Handling**: Auto-generates GUIDs for session tracking and handles duplicate filename conflicts (e.g. `file (1).png`).
 * **Flow-Ready**: Pre-processes attachments into base64 strings to be passed into Power Automate.
 
-## Installation
+## Getting Started
 
-* Copy the `YAML` code in `Attachment.yml` into the Components tab.
+* Copy the `YAML` code in `Attachment.yml` into the Components tab of your Power App or Component Library.
 
 
 ## Component Properties
 
-|Property|Type|Description|
-|:-|:-|:-|
-|
+### Custom Properties Reference: `cmpAttachment`
+
+| Property Internal Name | Display Name | Type | Data Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `AttachFile` | **Attach File** | Event | N/A | The primary event where you place your Power Automate Flow or Patch logic. |
+| `Attachments` | **Attachments** | Output | Table | The resulting table of files (Name, ID, FileContent, etc.) after processing. |
+| `BackgroundFill` | **Background Fill** | Input | Color | The primary fill color of the component container. |
+| `BorderRadius` | **Border Radius** | Input | Number | Controls the corner rounding of the component. |
+| `BorderStyle` | **Border Style** | Input | Text | The style of the border (Dashed, Solid, None). |
+| `BorderThickness` | **Border Thickness** | Input | Number | The thickness of the outer container border. |
+| `ClearAttachments` | **Clear Attachments** | Action | N/A | Resets the internal file collection (`colAttachments`). |
+| `Color` | **Color** | Input | Color | The color of the text label and the SVG icon. |
+| `DisabledBackgroundFill` | **Disabled Background Fill** | Input | Color | Background color used when the control is in View/Disabled mode. |
+| `DisabledColor` | **Disabled Color** | Input | Color | Text and Icon color used when the control is in View/Disabled mode. |
+| `DisplayMode` | **Display Mode** | Input | Text | Controls whether the component is in Edit, View, or Disabled mode. |
+| `Font` | **Font** | Input | Text | The font family used for the label text. |
+| `HoverFill` | **Hover Fill** | Input | Color | The color that appears when a user hovers over the control. |
+| `Icon` | **Icon** | Input | Text | The SVG string used for the attachment icon. |
+| `IconSize` | **Icon Size** | Input | Number | The height and width of the icon in pixels. |
+| `LabelDirection` | **Label Direction** | Input | Text | Sets the layout to `LayoutDirection.Horizontal` or `Vertical`. |
+| `Loading` | **Loading** | Output | Boolean | Becomes `true` while the component is processing binary data. |
+| `MaxAttachments` | **Max Attachments** | Input | Number | The maximum number of files allowed (Internal to native control). |
+| `OnAddFile` | **On Add File** | Action | N/A | Internal action that executes the `AttachFile` event. |
+| `PressedFill` | **Pressed Fill** | Input | Color | The color that appears when the control is clicked. |
+| `RemoveFile` | **Remove File** | Action | N/A | Action to remove a file from the collection based on its GUID (`IDToDelete`). |
+| `ResetOnAdd` | **Reset On Add** | Input | Boolean | If true, wipes the selection after every individual file upload. |
+| `Size` | **Font Size** | Input | Number | The size of the "Upload File" text. |
+| `Text` | **Text** | Input | Text | The display label (e.g., "Upload File", "Attach Invoice"). |
+| `ValidateMaximumAttachments` | **Validate Maximum Attachments** | Output Function | Boolean | A function to check if adding a file exceeds a specific limit. |
 
 
 ### Component Variables
 
+| Name | Type | Purpose |
+| :--- | :--- | :--- |
+| `gblLoadingData` | Boolean | A Boolean flag used to toggle the Loading output property. It is set to true while the component iterates through files and extracts Base64 strings, then false once finished. |
+| `gblContent` | Boolean | Stores the raw Self.Attachments table from the hidden native attachment control. It serves as the source for the internal gallery (galFileContent_cmpAttachment) used to extract binary data. |
+| `gblColor` | String | While not a Power App variable, this is used as a string placeholder within the SVG Icon property, allowing for dynamic color injection via the Substitute function. |
+| `colAttachments` | Collection | The primary internal collection that stores the file metadata and Base64 content (Name, FileNameWithoutExtension, FileExtension, Status, ID, FileContent). |
+| `colNumberExceededAttachments` | Collection| A temporary "error" collection used during the `OnAddFile` event in the attachment control to track files that were rejected because the `MaxAttachments` limit was reached.
 
 ## Power Automate Flow Integration
 
@@ -36,7 +69,7 @@ The flow trigger should have the following parameters:
 * Content: The collection containing the files to be attached from the component.
 * Metadata: Additional metadata to be added to the attached files. Ensure that the columns exist in the target library.
 
-The flow also needs to have the **Respond to a Power App or flow** action which returns a `response` as an output. This `reponse` is used in the component to refresh the data source and perform any additional logic when the flow is successful.
+The flow also needs to have the **Respond to a Power App or flow** action which returns a `response` as an output. This `response` is used in the component to refresh the data source and perform any additional logic when the flow is successful.
 
 In the flow:
 
@@ -52,7 +85,7 @@ The component uses the native `Attachments` control layered with a 0% opacity fi
 
 ### Extracting Data from the Attachments Control
 
-The component converts the blob URI of a file that is attached to a base64 string within the `OnAddFile` property:
+The component converts the blob URI of a file that is attached to a base64 string within the `AttachFile` property:
 
 ```powerfx
 ForAll(
@@ -75,8 +108,6 @@ ForAll(
                 FileContent: ""
             }
         );
-        //Notify(LookUp(colAttachments, ID = tempID).ID);
-        // TODO: IF OVER THE ATTACHMENT SIZE --> DONT ADD
         Patch(
             colAttachments,
             LookUp(colAttachments, ID = tempID),
@@ -87,8 +118,3 @@ ForAll(
     );
 );
 ```
-
-## Contributing
-
-
-

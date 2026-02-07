@@ -2,6 +2,12 @@ ComponentDefinitions:
   cmpAttachment:
     DefinitionType: CanvasComponent
     CustomProperties:
+      AttachFile:
+        PropertyKind: Event
+        DisplayName: Attach File
+        Description: Put the Attach Workflow Here
+        ReturnType: None
+        Default: =
       Attachments:
         PropertyKind: Output
         DisplayName: Attachments
@@ -19,6 +25,18 @@ ComponentDefinitions:
         Description: Border Radius
         DataType: Number
         Default: =0
+      BorderStyle:
+        PropertyKind: Input
+        DisplayName: Border Style
+        Description: Border Style
+        DataType: Text
+        Default: =BorderStyle.Dashed
+      BorderThickness:
+        PropertyKind: Input
+        DisplayName: Border Thickness
+        Description: Border Thickness
+        DataType: Number
+        Default: =1
       ClearAttachments:
         PropertyKind: Action
         DisplayName: Clear Attachments
@@ -48,6 +66,12 @@ ComponentDefinitions:
         Description: Display Mode
         DataType: Text
         Default: =DisplayMode.Edit
+      Font:
+        PropertyKind: Input
+        DisplayName: Font
+        Description: Font
+        DataType: Text
+        Default: =Font.'Open Sans'
       HoverFill:
         PropertyKind: Input
         DisplayName: Hover Fill
@@ -87,12 +111,17 @@ ComponentDefinitions:
         DisplayName: Loading
         Description: Component Loading
         DataType: Boolean
+      MaxAttachments:
+        PropertyKind: Input
+        DisplayName: Max Attachments
+        Description: Max Attachments
+        DataType: Number
+        Default: =5
       OnAddFile:
-        PropertyKind: Event
+        PropertyKind: Action
         DisplayName: On Add File
         Description: On Add File
         ReturnType: None
-        Default: =
       PressedFill:
         PropertyKind: Input
         DisplayName: Pressed Fill
@@ -127,6 +156,16 @@ ComponentDefinitions:
         Description: Upload File Text
         DataType: Text
         Default: ="Upload File"
+      ValidateMaximumAttachments:
+        PropertyKind: OutputFunction
+        DisplayName: Validate Maximum Attachments
+        Description: Validates Maximum Attachments
+        DataType: Boolean
+        Parameters:
+          - MaxAttachments:
+              Description: Maximum number of attachments
+              DataType: Number
+              Default: =100
     Properties:
       Attachments: =colAttachments
       ClearAttachments: |-
@@ -135,30 +174,60 @@ ComponentDefinitions:
         //Set(gblContent, Blank());
         //Reset(atcAttachment_cmpAttachment);
       Loading: =gblLoadingData
+      OnAddFile: =Self.AttachFile();
       OnReset: |-
         =Set(gblLoadingData, false);
         Reset(atcAttachment_cmpAttachment);
         Clear(colAttachments);
+        Clear(colNumberExceededAttachments);
       RemoveFile: |-
         =Set(gblLoadingData, true);
         Remove(colAttachments, LookUp(colAttachments, ID = IDToDelete));
         Set(gblLoadingData, false);
+      ValidateMaximumAttachments: =CountRows(colAttachments) < MaxAttachments
     Children:
+      - htmButtonAttachmentCalcWidth_cmpAttachment:
+          Control: HtmlViewer@2.1.0
+          Properties:
+            AutoHeight: =true
+            Font: =lblButtonAttachment_cmpAttachment.Font
+            Height: =1
+            HtmlText: |+
+              =// This control calculates the width of the breadcrumb item
+              $"<div style='
+                  display: inline-block;
+                  margin: 0px 30px;
+                  position: relative;
+                  transform: rotate(90deg);
+                  transform-origin: top left;
+                  white-space: nowrap;
+                  font-weight: 600;
+
+              '>
+              {lblButtonAttachment_cmpAttachment.Text}
+              </div>"
+            PaddingBottom: =0
+            PaddingLeft: =0
+            PaddingRight: =0
+            PaddingTop: =0
+            Size: =lblButtonAttachment_cmpAttachment.Size
+            Width: =1
+            Y: =Parent.Height + 100
       - conAttachment_cmpAttachment:
           Control: GroupContainer@1.4.0
           Variant: ManualLayout
           Properties:
-            BorderStyle: =BorderStyle.Dashed
-            BorderThickness: =1
+            BorderStyle: =cmpAttachment.BorderStyle
+            BorderThickness: =cmpAttachment.BorderThickness
             DropShadow: =DropShadow.None
-            Height: =Parent.Height - 2
+            Height: =Parent.Height - Self.BorderThickness
             RadiusBottomLeft: =cmpAttachment.BorderRadius
             RadiusBottomRight: =cmpAttachment.BorderRadius
             RadiusTopLeft: =cmpAttachment.BorderRadius
             RadiusTopRight: =cmpAttachment.BorderRadius
-            Width: =Parent.Width - 2
-            X: =1
-            Y: =1
+            Width: =Parent.Width - Self.BorderThickness
+            X: =Self.BorderThickness / 2
+            Y: =Self.BorderThickness / 2
           Children:
             - galFileContent_cmpAttachment:
                 Control: Gallery@2.15.0
@@ -169,6 +238,7 @@ ComponentDefinitions:
                   Items: =gblContent
                   TemplateSize: =40
                   Width: =313
+                  Y: =Parent.Height + 40
                 Children:
                   - imgFileContent_cmpAttachment:
                       Control: Image@2.2.3
@@ -245,6 +315,7 @@ ComponentDefinitions:
                         Color: =cmpAttachment.Color
                         DisabledColor: =cmpAttachment.DisabledColor
                         DisplayMode: =cmpAttachment.DisplayMode
+                        Font: =cmpAttachment.Font
                         FontWeight: =FontWeight.Semibold
                         LayoutMaxHeight: =
                         LayoutMaxWidth: =
@@ -285,13 +356,13 @@ ComponentDefinitions:
                   Items.Name: =Name
                   Items.Value: =FileContent
                   MaxAttachmentSize: =50
-                  MaxAttachments: =5
+                  MaxAttachments: =cmpAttachment.MaxAttachments
                   MaxAttachmentsText: =
                   NoAttachmentsColor: =RGBA(0, 0, 0, 0)
                   NoAttachmentsText: =
                   OnAddFile: |-
                     =// Resets the component state whenever this runs. Use it when you want each attaching action to reset. 
-                    // Set to false if you'd like to allow adding more attachments in each different attach action
+                    // Set to false if you would like to store a number of attachments locally before uploading them.
                     If(
                         cmpAttachment.ResetOnAdd,
                         cmpAttachment.ClearAttachments()
@@ -299,7 +370,7 @@ ComponentDefinitions:
 
                     Set(gblContent, Self.Attachments);
                     Set(gblLoadingData, true);
-
+                    Clear(colNumberExceededAttachments);
                     ForAll(
                         galFileContent_cmpAttachment.AllItems As attachmentFile,
                         With(
@@ -307,55 +378,45 @@ ComponentDefinitions:
                                 tempID: Text(GUID()),
                                 contentFile: Index(Split(Substitute(JSON(attachmentFile.imgFileContent_cmpAttachment.Image, JSONFormat.IncludeBinaryData), """", ""), ","),2).Value,
                                 numDuplicates: CountRows(Filter(colAttachments, Name = attachmentFile.Name)),
-                                //.test: First(Split(attachmentFile.Name, "." & Last(Split(attachmentFile.Name, ".").Value))),
-                                fileName: First(Split(attachmentFile.Name, ".")).Value,
+                                fileNameWithoutExtension: Substitute(attachmentFile.Name, $".{Last(Split(attachmentFile.Name, ".")).Value}", ""),
                                 fileExtension: Last(Split(attachmentFile.Name, ".")).Value
                             },
-                            Collect(
-                                colAttachments,
-                                {
-                                    Name: If(!IsBlank(LookUp(colAttachments, Name = attachmentFile.Name)), $"{fileName} ({numDuplicates}).{fileExtension}", attachmentFile.Name),
-                                    Status: "Unsaved",
-                                    ID: tempID,
-                                    FileContent: ""
-                                }
-                            );
-                            //Notify(LookUp(colAttachments, ID = tempID).ID);
-                            // TODO: IF OVER THE ATTACHMENT SIZE --> DONT ADD
-                            Patch(
-                                colAttachments,
-                                LookUp(colAttachments, ID = tempID),
-                                {
-                                    FileContent: contentFile
-                                }
+                            If(
+                                cmpAttachment.ValidateMaximumAttachments(atcAttachment_cmpAttachment.MaxAttachments),
+                                Collect(
+                                    colAttachments,
+                                    {
+                                        Name: If(!IsBlank(LookUp(colAttachments, Name = attachmentFile.Name)), $"{fileNameWithoutExtension} ({numDuplicates}).{fileNameWithoutExtension}", attachmentFile.Name),
+                                        FileNameWithoutExtension: fileNameWithoutExtension,
+                                        FileExtension: fileExtension,
+                                        Status: "Unsaved",
+                                        ID: tempID,
+                                        FileContent: ""
+                                    }
+                                );
+                                Patch(
+                                    colAttachments,
+                                    LookUp(colAttachments, ID = tempID),
+                                    {
+                                        FileContent: contentFile
+                                    }
+                                );,
+                                Collect(colNumberExceededAttachments, {});
                             );
                         );
                     );
-                    cmpAttachment.OnAddFile();
                     // Insert Logic here depending on whether you want to attach immediately or wait until user submits
-                    /*
-                    With(
-                        {
-                            currentFiles: Filter(PAEC_SP_LIB_ITEMSDOCUMENTS, PAECNumber = varFormData.PAECNumber, DocumentType = nfDocumentTypes.Template),
-                            pendingFiles: colAttachments,
-                            maxLimit: nfAttachmentLimit
-                        },
-                        If(
-                            CountRows(currentFiles) + CountRows(pendingFiles) > 18,
-                            Notify($"The {CountRows(pendingFiles)} file(s) you are attempting to upload will exceed the total limit of {maxLimit}. Please try again.", NotificationType.Error, 10000),
-                            !IsEmpty(pendingFiles), 
-                            Set(varUploadFilesResponse, PAEC_UploadFiles.Run(JSON(pendingFiles),nfItemsDocuments,varFormData.PAECNumber))
-                        );
-                    );
-
-                    Clear(colAttachments);
-
                     If(
-                        varUploadFilesResponse.response = 200,
-                        Refresh(PAEC_SP_LIB_ITEMSDOCUMENTS);
-                        Set(varUploadFilesResponse, Blank())
+                        !IsEmpty(colNumberExceededAttachments),
+                        Notify($"{CountRows(colNumberExceededAttachments)} attachments not added. Maximum attachments reached.", NotificationType.Error, 4000)
                     );
-                    */
+                    If(
+                        cmpAttachment.ResetOnAdd,
+                        cmpAttachment.OnAddFile();
+                        cmpAttachment.ClearAttachments();
+                    );
+
+
                     Reset(Self);
                     Set(gblLoadingData, false);
                   PaddingBottom: =5
@@ -368,30 +429,3 @@ ComponentDefinitions:
                   Width: =Parent.Width* 2
                   X: =(Parent.Width - Self.Width) / 2
                   Y: =-Parent.Height * 2
-      - htmButtonAttachmentCalcWidth_cmpAttachment:
-          Control: HtmlViewer@2.1.0
-          Properties:
-            AutoHeight: =true
-            Font: =lblButtonAttachment_cmpAttachment.Font
-            Height: =1
-            HtmlText: |+
-              =// This control calculates the width of the breadcrumb item
-              $"<div style='
-                  display: inline-block;
-                  margin: 0px 30px;
-                  position: relative;
-                  transform: rotate(90deg);
-                  transform-origin: top left;
-                  white-space: nowrap;
-                  font-weight: 600;
-
-              '>
-              {lblButtonAttachment_cmpAttachment.Text}
-              </div>"
-            PaddingBottom: =0
-            PaddingLeft: =0
-            PaddingRight: =0
-            PaddingTop: =0
-            Size: =lblButtonAttachment_cmpAttachment.Size
-            Width: =1
-            Y: =Parent.Height + 100
