@@ -111,6 +111,12 @@ ComponentDefinitions:
         DisplayName: Loading
         Description: Component Loading
         DataType: Boolean
+      MaxAttachmentSize:
+        PropertyKind: Input
+        DisplayName: Maximum attachment size (in MB)
+        Description: Maximum attachment size (in MB)
+        DataType: Number
+        Default: =10
       MaxAttachments:
         PropertyKind: Input
         DisplayName: Max Attachments
@@ -192,7 +198,7 @@ ComponentDefinitions:
             AutoHeight: =true
             Font: =lblButtonAttachment_cmpAttachment.Font
             Height: =1
-            HtmlText: |+
+            HtmlText: |
               =// This control calculates the width of the breadcrumb item
               $"<div style='
                   display: inline-block;
@@ -214,7 +220,7 @@ ComponentDefinitions:
             Width: =1
             Y: =Parent.Height + 100
       - conAttachment_cmpAttachment:
-          Control: GroupContainer@1.4.0
+          Control: GroupContainer@1.5.0
           Variant: ManualLayout
           Properties:
             BorderStyle: =cmpAttachment.BorderStyle
@@ -258,7 +264,7 @@ ComponentDefinitions:
                         PressedFill: =RGBA(0, 0, 0, 0)
                         X: =40
             - conButtonAttachment_cmpAttachment:
-                Control: GroupContainer@1.4.0
+                Control: GroupContainer@1.5.0
                 Variant: AutoLayout
                 Properties:
                   BorderStyle: =BorderStyle.None
@@ -355,70 +361,12 @@ ComponentDefinitions:
                   ItemHoverFill: =cmpAttachment.HoverFill
                   Items.Name: =Name
                   Items.Value: =FileContent
-                  MaxAttachmentSize: =50
+                  MaxAttachmentSize: =cmpAttachment.MaxAttachmentSize
                   MaxAttachments: =cmpAttachment.MaxAttachments
                   MaxAttachmentsText: =
                   NoAttachmentsColor: =RGBA(0, 0, 0, 0)
                   NoAttachmentsText: =
-                  OnAddFile: |-
-                    =// Resets the component state whenever this runs. Use it when you want each attaching action to reset. 
-                    // Set to false if you would like to store a number of attachments locally before uploading them.
-                    If(
-                        cmpAttachment.ResetOnAdd,
-                        cmpAttachment.ClearAttachments()
-                    );
-
-                    Set(gblContent, Self.Attachments);
-                    Set(gblLoadingData, true);
-                    Clear(colNumberExceededAttachments);
-                    ForAll(
-                        galFileContent_cmpAttachment.AllItems As attachmentFile,
-                        With(
-                            {
-                                tempID: Text(GUID()),
-                                contentFile: Index(Split(Substitute(JSON(attachmentFile.imgFileContent_cmpAttachment.Image, JSONFormat.IncludeBinaryData), """", ""), ","),2).Value,
-                                numDuplicates: CountRows(Filter(colAttachments, Name = attachmentFile.Name)),
-                                fileNameWithoutExtension: Substitute(attachmentFile.Name, $".{Last(Split(attachmentFile.Name, ".")).Value}", ""),
-                                fileExtension: Last(Split(attachmentFile.Name, ".")).Value
-                            },
-                            If(
-                                cmpAttachment.ValidateMaximumAttachments(atcAttachment_cmpAttachment.MaxAttachments),
-                                Collect(
-                                    colAttachments,
-                                    {
-                                        Name: If(!IsBlank(LookUp(colAttachments, Name = attachmentFile.Name)), $"{fileNameWithoutExtension} ({numDuplicates}).{fileNameWithoutExtension}", attachmentFile.Name),
-                                        FileNameWithoutExtension: fileNameWithoutExtension,
-                                        FileExtension: fileExtension,
-                                        Status: "Unsaved",
-                                        ID: tempID,
-                                        FileContent: ""
-                                    }
-                                );
-                                Patch(
-                                    colAttachments,
-                                    LookUp(colAttachments, ID = tempID),
-                                    {
-                                        FileContent: contentFile
-                                    }
-                                );,
-                                Collect(colNumberExceededAttachments, {});
-                            );
-                        );
-                    );
-                    // Insert Logic here depending on whether you want to attach immediately or wait until user submits
-                    If(
-                        !IsEmpty(colNumberExceededAttachments),
-                        Notify($"{CountRows(colNumberExceededAttachments)} attachments not added. Maximum attachments reached.", NotificationType.Error, 4000)
-                    );
-                    If(
-                        cmpAttachment.ResetOnAdd,
-                        cmpAttachment.OnAddFile();
-                        cmpAttachment.ClearAttachments();
-                    );
-
-
-                    Reset(Self);
-                    Set(gblLoadingData, false);
+                  OnAddFile: "=// Resets the component state whenever this runs. \nSet(gblContent, Self.Attachments);\nSet(gblLoadingData, true);\nClear(colNumberExceededAttachments);\n\nWith(\n    {\n        stagedAttachments: ForAll(\n            galFileContent_cmpAttachment.AllItems As attachmentFile,\n            With(\n                {\n                    tempID: Text(GUID()),\n                    contentFile: Index(Split(Substitute(JSON(attachmentFile.imgFileContent_cmpAttachment.Image, JSONFormat.IncludeBinaryData), \"\"\"\", \"\"), \",\"),2).Value,\n                    numDuplicates: CountRows(Filter(colAttachments, Name = attachmentFile.Name)),\n                    fileNameWithoutExtension: Substitute(attachmentFile.Name, $\".{Last(Split(attachmentFile.Name, \".\")).Value}\", \"\"),\n                    fileExtension: Last(Split(attachmentFile.Name, \".\")).Value\n                },\n                {\n\n                    Name: If(\n                        !IsBlank(LookUp(colAttachments, Name = attachmentFile.Name)), \n                        $\"{fileNameWithoutExtension} ({numDuplicates}).{fileExtension}\", \n                        attachmentFile.Name\n                    ),\n                    FileNameWithoutExtension: fileNameWithoutExtension,\n                    FileExtension: fileExtension,\n                    Status: \"Unsaved\",\n                    ID: tempID,\n                    FileContent: contentFile\n                }\n            )\n        )\n    },\n    With(\n        {\n            allowedSlots: atcAttachment_cmpAttachment.MaxAttachments - CountRows(colAttachments),\n            totalNew: CountRows(stagedAttachments)\n        },\n        Collect(\n            colAttachments,\n            FirstN(stagedAttachments, allowedSlots)\n        );\n        \n        // If the user attached more than allowed, generate dummy error records for the notification\n        With(\n            {\n                numberExceededAttachments: If(\n                    totalNew > allowedSlots,\n                    Collect(\n                        colNumberExceededAttachments,\n                        ForAll(Sequence(totalNew - allowedSlots), {})\n                    )\n                )\n            },\n            If(\n                !IsEmpty(colNumberExceededAttachments),\n                Notify($\"{CountRows(colNumberExceededAttachments)} attachments not added. Maximum attachments reached.\", NotificationType.Error, 4000)\n            );\n        );\n\n    );\n);\n\nIf(\n    cmpAttachment.ResetOnAdd,\n    cmpAttachment.OnAddFile();\n    cmpAttachment.ClearAttachments();\n);\n\nReset(Self);\nSet(gblLoadingData, false);"
                   PaddingBottom: =5
                   PaddingLeft: =If(Self.DisplayMode = DisplayMode.Edit, 5, 0)
                   PaddingRight: =5
