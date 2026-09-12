@@ -13,7 +13,14 @@ A highly customisable, modern replacement for the standard Power Apps attachment
 ## Getting Started
 
 * Copy the `YAML` code in `Attachment.yml` into the Components tab of your Power App or Component Library.
+* Create a flow to upload the output of the component.
 
+## Solution Example
+
+A solution containing an example of the component is provided in `Attachments_1_0_0_0.zip`. The solution contains:
+
+* An example app: **Attachments** which contains an upload on a button click and a upload on file attachment.
+* An example flow: **UploadFiles** which is used to upload the files to a SharePoint Document Library and can include metadata columns. The flow can be used across different libraries.
 
 ## Component Properties
 
@@ -39,6 +46,7 @@ A highly customisable, modern replacement for the standard Power Apps attachment
 | `LabelDirection` | **Label Direction** | Input | Text | Sets the layout to `LayoutDirection.Horizontal` or `Vertical`. |
 | `Loading` | **Loading** | Output | Boolean | Becomes `true` while the component is processing binary data. |
 | `MaxAttachments` | **Max Attachments** | Input | Number | The maximum number of files allowed (Internal to native control). |
+|`MaxAttachmentSize` | **Maximum attachment size (in MB)** | Input | Number | The maximum size allowed for an upload. |
 | `OnAddFile` | **On Add File** | Action | N/A | Internal action that executes the `AttachFile` event. |
 | `PressedFill` | **Pressed Fill** | Input | Color | The color that appears when the control is clicked. |
 | `RemoveFile` | **Remove File** | Action | N/A | Action to remove a file from the collection based on its GUID (`IDToDelete`). |
@@ -81,40 +89,105 @@ In the flow:
 
 ### The "Hack"
 
-The component uses the native `Attachments` control layered with a 0% opacity fill and positioned so that it the native OS file picker is triggered. The look and feel is set up in a container behind the `Attachments`.
+The component uses the native `Attachments` control layered with a 0% opacity fill and positioned so that it the native OS file picker is triggered. The look and feel is set up in a container behind the `Attach
 
 ### Extracting Data from the Attachments Control
 
-The component converts the blob URI of a file that is attached to a base64 string within the `AttachFile` property:
+The component converts the blob URI of a file that is attached to a base64 string within the `OnAddFile` property of the attachment control:
 
 ```powerfx
-ForAll(
-    galFileContent_cmpAttachment.AllItems As attachmentFile,
+// Resets the component state whenever this runs. 
+Set(gblContent, Self.Attachments);
+Set(gblLoadingData, true);
+Clear(colNumberExceededAttachments);
+
+With(
+    {
+        stagedAttachments: ForAll(
+            galFileContent_cmpAttachment.AllItems As attachmentFile,
+            With(
+                {
+                    tempID: Text(GUID()),
+                    contentFile: Index(Split(Substitute(JSON(attachmentFile.imgFileContent_cmpAttachment.Image, JSONFormat.IncludeBinaryData), """", ""), ","),2).Value,
+                    numDuplicates: CountRows(Filter(colAttachments, Name = attachmentFile.Name)),
+                    fileNameWithoutExtension: Substitute(attachmentFile.Name, $".{Last(Split(attachmentFile.Name, ".")).Value}", ""),
+                    fileExtension: Last(Split(attachmentFile.Name, ".")).Value
+                },
+                {
+
+                    Name: If(
+                        !IsBlank(LookUp(colAttachments, Name = attachmentFile.Name)), 
+                        $"{fileNameWithoutExtension} ({numDuplicates}).{fileExtension}", 
+                        attachmentFile.Name
+                    ),
+                    FileNameWithoutExtension: fileNameWithoutExtension,
+                    FileExtension: fileExtension,
+                    Status: "Unsaved",
+                    ID: tempID,
+                    FileContent: contentFile
+                }
+            )
+        )
+    },
     With(
         {
-            tempID: Text(GUID()),
-            contentFile: Index(Split(Substitute(JSON(attachmentFile.imgFileContent_cmpAttachment.Image, JSONFormat.IncludeBinaryData), """", ""), ","),2).Value,
-            numDuplicates: CountRows(Filter(colAttachments, Name = attachmentFile.Name)),
-            //.test: First(Split(attachmentFile.Name, "." & Last(Split(attachmentFile.Name, ".").Value))),
-            fileName: First(Split(attachmentFile.Name, ".")).Value,
-            fileExtension: Last(Split(attachmentFile.Name, ".")).Value
+            allowedSlots: atcAttachment_cmpAttachment.MaxAttachments - CountRows(colAttachments),
+            totalNew: CountRows(stagedAttachments)
         },
         Collect(
             colAttachments,
-            {
-                Name: If(!IsBlank(LookUp(colAttachments, Name = attachmentFile.Name)), $"{fileName} ({numDuplicates}).{fileExtension}", attachmentFile.Name),
-                Status: "Unsaved",
-                ID: tempID,
-                FileContent: ""
-            }
+            FirstN(stagedAttachments, allowedSlots)
         );
-        Patch(
-            colAttachments,
-            LookUp(colAttachments, ID = tempID),
+        
+        // If the user attached more than allowed, generate dummy error records for the notification
+        With(
             {
-                FileContent: contentFile
-            }
+                numberExceededAttachments: If(
+                    totalNew > allowedSlots,
+                    Collect(
+                        colNumberExceededAttachments,
+                        ForAll(Sequence(totalNew - allowedSlots), {})
+                    )
+                )
+            },
+            If(
+                !IsEmpty(colNumberExceededAttachments),
+                Notify($"{CountRows(colNumberExceededAttachments)} attachments not added. Maximum attachments reached.", NotificationType.Error, 4000)
+            );
         );
+
     );
 );
+
+If(
+    cmpAttachment.ResetOnAdd,
+    cmpAttachment.OnAddFile();
+    cmpAttachment.ClearAttachments();
+);
+
+Reset(Self);
+Set(gblLoadingData, false);
 ```
+The collection is loaded into a gallery within the component, which contains an image control that converts the file into a `base64` string. 
+
+This is then passed into a Power Automate flow which performs the upload of the attached content into a document library.
+
+**Example:**
+
+```powerfx
+Set(
+    gblUploadFilesResponse, 
+    UploadFiles.Run(JSON(cmpAttachment_Attachments.Attachments), JSON(nfAttachmentMetadata), "https://55nwjd.sharepoint.com/sites/ComponentsPlayground", "AttachmentLibrary");
+);
+
+If(
+    Value(gblUploadFilesResponse.response) = 200,
+    // Refresh your Data Source here
+    Refresh(AttachmentLibrary);
+    cmpAttachment_Attachments.ClearAttachments();
+    Notify("Success", NotificationType.Success, 4000)
+    ,
+    Notify("Error", NotificationType.Error, 4000)
+)
+```
+
